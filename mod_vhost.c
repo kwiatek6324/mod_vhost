@@ -867,8 +867,16 @@ if (vc->poscache!=NULL) {
 	if (zend_alter_ini_entry("open_basedir", sizeof("open_basedir"), filter, strlen(filter), 4, 1) < 0) {
 		ap_log_error(APLOG_MARK, APLOG_NOERRNO | APLOG_WARNING, 0,s,"zend_alter_ini_entry() set open_basedir failed");
 		};
-
 	if (zend_alter_ini_entry("doc_root", sizeof("doc_root"), filter, strlen(filter), 4, 1) < 0) {
+		ap_log_error(APLOG_MARK, APLOG_NOERRNO | APLOG_WARNING, 0,s, "zend_alter_ini_entry() set doc_root failed");
+		};
+
+	snprintf(filter,1024,"%s%s/tmp",vc->dir,documentroot);
+	ap_no2slash(filter);
+	if (zend_alter_ini_entry("session.save_path", sizeof("session.save_path"), filter, strlen(filter), 4, 1) < 0) {
+		ap_log_error(APLOG_MARK, APLOG_NOERRNO | APLOG_WARNING, 0,s, "zend_alter_ini_entry() set doc_root failed");
+		};
+	if (zend_alter_ini_entry("upload_tmp_dir", sizeof("upload_tmp_dir"), filter, strlen(filter), 4, 1) < 0) {
 		ap_log_error(APLOG_MARK, APLOG_NOERRNO | APLOG_WARNING, 0,s, "zend_alter_ini_entry() set doc_root failed");
 		};
 #endif
