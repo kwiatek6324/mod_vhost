@@ -782,9 +782,7 @@ if ((documentroot=check_alias(r,vc->aliases))!=NULL) {
         r->parsed_uri.hostname=r->server->server_hostname;
         r->parsed_uri.hostinfo=r->server->server_hostname;
 
-        r->filename=apr_pstrcat(r->pool,vc->dir,r->parsed_uri.path,NULL);
-
-        snprintf(filter,1024,"%s%s",vc->dir,documentroot);
+        r->filename=apr_pstrcat(r->pool,vc->dir,documentroot,NULL);
 
 	return OK;
 
