@@ -37,7 +37,7 @@
 
 
 #include <time.h>
-#include <db43/db.h>
+#include <db.h>
 
 #include <string.h>
 #include <strings.h>

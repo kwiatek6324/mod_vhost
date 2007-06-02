@@ -6,9 +6,9 @@
 BACKEND=-DHAVE_PGSQL -DHAVE_PHP
 
 #   the used tools
-APXS=/opt/idsl/apache-2.2.0/bin/apxs
-APACHECTL=/opt/idsl/apache-2.2.0/bin/apache2ctl
-LIBS= -ldb-4.3 -L/usr/local/lib/ -lpq -I/opt/pgsql/include/ -L/opt/pgsql/lib -lldap -I/opt/mysql/include -L/opt/mysql/lib/mysql -lmysqlclient -lsqlite3 $(BACKEND)
+APXS=/opt/idsl/httpd/bin/apxs
+APACHECTL=/opt/idsl/httpd/bin/apache2ctl
+LIBS= -ldb-4.4 -L/usr/local/lib/ -lpq -I/opt/idsl/pgsql/include/ -L/opt/idsl/pgsql/lib $(BACKEND)
 
 #   additional user defines, includes and libraries
 
