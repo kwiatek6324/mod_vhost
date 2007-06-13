@@ -775,12 +775,12 @@ if ((documentroot=check_alias(r,vc->aliases))!=NULL) {
 
 	ap_log_error(APLOG_MARK,APLOG_DEBUG,0,s,"[mod_vhost.c]: Got Alias [%s]->[%s]",r->uri,documentroot);
 
-        r->server->server_admin= apr_pstrcat(r->pool,"webmaster@",r->hostname,NULL);
-        r->server->server_hostname= apr_pstrcat(r->pool,r->hostname,NULL);
+//        r->server->server_admin= apr_pstrcat(r->pool,"webmaster@",r->hostname,NULL);
+//        r->server->server_hostname= apr_pstrcat(r->pool,r->hostname,NULL);
 
-        r->parsed_uri.path=apr_pstrcat(r->pool,documentroot,r->parsed_uri.path,NULL);
-        r->parsed_uri.hostname=r->server->server_hostname;
-        r->parsed_uri.hostinfo=r->server->server_hostname;
+//        r->parsed_uri.path=apr_pstrcat(r->pool,documentroot,r->parsed_uri.path,NULL);
+//        r->parsed_uri.hostname=r->server->server_hostname;
+//        r->parsed_uri.hostinfo=r->server->server_hostname;
 
         r->filename=apr_pstrcat(r->pool,vc->dir,documentroot,NULL);
 
@@ -842,9 +842,9 @@ if (vc->poscache!=NULL) {
 */
 
 	r->server->server_hostname = apr_pstrdup(r->pool, r->hostname); // prepare server hostname
-	r->server->is_virtual = 1;
-	r->parsed_uri.hostinfo = r->server->server_hostname;
-	r->parsed_uri.hostname = r->server->server_hostname;
+//	r->server->is_virtual = 1;
+//	r->parsed_uri.hostinfo = r->server->server_hostname;
+//	r->parsed_uri.hostname = r->server->server_hostname;
 
 	r->filename=apr_pstrcat(r->pool,vc->dir,documentroot,r->uri,NULL);
 	ap_no2slash(r->filename);
