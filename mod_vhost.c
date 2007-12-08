@@ -603,14 +603,16 @@ if (vc->mysql_host==NULL ||
                                 ap_log_error(APLOG_MARK,APLOG_ERR,0,s,"[mod_vhost.c]: get_mysql_docroot no single entry for query: %s",filter);
                         } else {
 				row=mysql_fetch_row(res);
-                                val=row[0];
-                                if (val!=NULL && strlen(val)>0) {
-                                        dr=apr_palloc(r->pool,strlen(val+1));
-                                        snprintf(dr,strlen(val)+1,"%s",val);
-                                        ap_log_error(APLOG_MARK,APLOG_DEBUG,0,s,"[mod_vhost.c]: get_mysql_docroot: got %s from mysql",dr);
-                                } else {
-                                        dr=NULL;
-                                };
+				if (row!=NULL) {
+                                	val=row[0];
+                                	if (val!=NULL && strlen(val)>0) {
+                                        	dr=apr_palloc(r->pool,strlen(val+1));
+                                        	snprintf(dr,strlen(val)+1,"%s",val);
+                                        	ap_log_error(APLOG_MARK,APLOG_DEBUG,0,s,"[mod_vhost.c]: get_mysql_docroot: got %s from mysql",dr);
+                                	} else {
+                                        	dr=NULL;
+                                	};
+				}
 
                         }; /* n!=1 */
                 }; /* res!=PGSQL_SUCCESS */
