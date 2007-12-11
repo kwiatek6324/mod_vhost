@@ -54,8 +54,10 @@ typedef struct {
         char    *dir;
         char    *poscache;
         char    *negcache;
-        int     minuid;
-        int     mingid;
+	int	suexecenable;
+        int     defuid;
+        int     defgid;
+	char	*defchroot;
 #ifdef HAVE_PGSQL
         char    *pgsql_host;
         char     *pgsql_port;
@@ -252,7 +254,7 @@ return rc;
 
 
 
-static char *get_db_docroot(server_rec *s,request_rec *r,char *hostname,char *dbfile)
+static char *get_db_cache(server_rec *s,request_rec *r,char *prefix,char *hostname,char *dbfile)
 {
 mod_vhost_config   *vc;
 
@@ -261,6 +263,7 @@ DBT                     key, data;
 
 int                     ret;
 char                    *dr=NULL;
+char			tmp[1024];
 
 
 vc=ap_get_module_config(r->server->module_config, &mod_vhost_module);
@@ -284,8 +287,10 @@ if ((ret = dbp->open(dbp, NULL,dbfile, NULL, DB_BTREE, DB_CREATE, 0664)) != 0)
 memset(&key, 0, sizeof(key));
 memset(&data, 0, sizeof(data));
 
-key.data = (char *)hostname;
-key.size = strlen(hostname);
+snprintf(tmp,1024,"%s:%s",prefix,hostname);
+
+key.data = (char *)(tmp);
+key.size = strlen(tmp);
 
 if (vc->debug>0)
         {
@@ -313,7 +318,7 @@ return dr;
 }
 
 
-static char *set_db_docroot(server_rec *s,request_rec *r,char *hostname,char *docroot,char *dbfile)
+static char *set_db_cache(server_rec *s,request_rec *r,char *prefix,char *hostname,char *value,char *dbfile)
 {
 DB                      *dbp;
 DBT                     key, data;
@@ -321,9 +326,11 @@ DBT                     key, data;
 int                     ret;
 char                    *dr=NULL;
 
-if (hostname==NULL || docroot==NULL || dbfile==NULL)
+char			tmp[1024];
+
+if (hostname==NULL || value==NULL || dbfile==NULL)
         {
-        ap_log_error(APLOG_MARK,APLOG_DEBUG,0,s,"[mod_vhost.c]: set_db_docroot: no hostname/docroot/dbfile received by set_db_dr ");
+        ap_log_error(APLOG_MARK,APLOG_DEBUG,0,s,"[mod_vhost.c]: set_db_cache: no hostname/docroot/dbfile received by set_db_dr ");
         return NULL;
         };
 
@@ -341,17 +348,19 @@ if ((ret = dbp->open(dbp, NULL,dbfile, NULL, DB_BTREE, DB_CREATE, 0664)) != 0)
 memset(&key, 0, sizeof(key));
 memset(&data, 0, sizeof(data));
 
-key.data = (char *)hostname;
-key.size = strlen(hostname);
+snprintf(tmp,1024,"%s:%s",prefix,hostname);
 
-data.data=docroot;
-data.size=strlen(docroot);
+key.data = (char *)(tmp);
+key.size = strlen(tmp);
+
+data.data=value;
+data.size=strlen(value);
 
 ap_log_error(APLOG_MARK,APLOG_DEBUG,0,s,"[mod_vhost.c]: set_db_dr: %s[%d]",key.data,key.size);
 
 if ((ret = dbp->put(dbp, NULL, &key, &data, 0)) != 0)
         {
-        ap_log_error(APLOG_MARK,APLOG_DEBUG,0,s,"[mod_vhost.c]: set_db_docroot: error setting documentroot");
+        ap_log_error(APLOG_MARK,APLOG_DEBUG,0,s,"[mod_vhost.c]: set_db_cache: error setting documentroot");
         };
 
 if ((ret=dbp->close(dbp, 0))!=0)
@@ -792,7 +801,7 @@ if ((documentroot=check_alias(r,vc->aliases))!=NULL) {
 
 
 if (vc->negcache!=NULL) {
-	documentroot=get_db_docroot(r->server,r,(char *)r->hostname,vc->negcache);
+	documentroot=get_db_cache(r->server,r,(char *)"all",(char *)r->hostname,vc->negcache);
 	if (documentroot!=NULL && !strcmp(documentroot,"NOT_FOUND")) {
 		ap_log_error(APLOG_MARK,APLOG_DEBUG,0,s,"mod_vhost: hostname [%s] found in negative Cache",(char *)r->hostname);
 		return DECLINED;
@@ -800,7 +809,7 @@ if (vc->negcache!=NULL) {
 	} ;
 
 if (vc->poscache!=NULL) {
-	documentroot=get_db_docroot(r->server,r,(char *)r->hostname,vc->poscache);
+	documentroot=get_db_cache(r->server,r,(char *)"docroot",(char *)r->hostname,vc->poscache);
 	if (documentroot==NULL) {
 		#ifdef HAVE_PGSQL
 		dr=get_pgsql_docroot(r->server,r,(char *)r->hostname);
@@ -818,13 +827,13 @@ if (vc->poscache!=NULL) {
 			ap_log_error(APLOG_MARK,APLOG_WARNING,0,s,"[mod_vhost.c]: hostname not found in database [%s]",(char *)r->hostname);
 			documentroot=NULL;
 			} else {
-			set_db_docroot(r->server,r,(char *)r->hostname,dr,vc->poscache);
+			set_db_cache(r->server,r,"docroot",(char *)r->hostname,dr,vc->poscache);
 			documentroot=apr_pstrdup(r->pool,dr);
 			};
 		};
 
 	if (documentroot==NULL) {
-		set_db_docroot(r->server,r,(char *)r->hostname,"NOT_FOUND",vc->negcache);
+		set_db_cache(r->server,r,"docroot",(char *)r->hostname,"NOT_FOUND",vc->negcache);
 		return DECLINED;
 		};
 
@@ -900,15 +909,16 @@ vc= (mod_vhost_config *) apr_pcalloc(p,sizeof(mod_vhost_config));
 vc->dir="/www";
 vc->poscache="/tmp/positive.db";
 vc->negcache="/tmp/negative.db";
-vc->minuid=1000;
-vc->mingid=1000;
+vc->defuid=65534;
+vc->defgid=65534;
+vc->defchroot="/tmp";
 #ifdef HAVE_PGSQL
 vc->pgsql_host="localhost";
 vc->pgsql_port="5432";
 vc->pgsql_user=NULL;
 vc->pgsql_pass=NULL;
 vc->pgsql_db=NULL;
-vc->pgsql_select="select documentroot from www where domainname=%s";
+vc->pgsql_select="select documentroot,uid,gid from www where domainname=%s";
 #endif
 #ifdef HAVE_LDAP
 vc->ldap_host="ldap";
@@ -924,11 +934,11 @@ vc->mysql_port="3306";
 vc->mysql_user=NULL;
 vc->mysql_pass=NULL;
 vc->mysql_db=NULL;
-vc->mysql_select="select documentroot from www where domainname=%s";
+vc->mysql_select="select documentroot,uid,gid from www where domainname=%s";
 #endif
 #ifdef HAVE_SQLITE
 vc->sqlite_db="/tmp/baza.db";
-vc->sqlite_select="select documentroot from www where domainname=%s";
+vc->sqlite_select="select documentroot,uid,gid from www where domainname=%s";
 #endif
 
 vc->debug="0";
@@ -1127,7 +1137,16 @@ mod_vhost_config *conf =
     return NULL;
 }
 
+/* suexec support */
 
+static const char *mod_vhost_set_suexec_enable(cmd_parms *cmd, void *dummy, int enabled)
+{
+mod_vhost_config *conf =
+(mod_vhost_config *)ap_get_module_config(cmd->server->module_config,
+                                                        &mod_vhost_module);
+    conf->suexecenable = (enabled) ? 1 : 0;
+    return NULL;
+}
 
 
 
@@ -1143,6 +1162,7 @@ static void mod_vhost_register_hooks(apr_pool_t *p) {
 
 static const command_rec mod_vhost_cmds[] = {
 	AP_INIT_TAKE1("ModVhostEnable",(void *)mod_vhost_set_enable, NULL, RSRC_CONF, "Set on or off to disable mod_vhost"),
+	AP_INIT_TAKE1("ModVhostSuExecEnable",(void *)mod_vhost_set_suexec_enable, NULL, RSRC_CONF, "Set on or off to disable mod_vhost suexec support"),
 	AP_INIT_TAKE2("ModVhostServer",(void *)mod_vhost_set_server, NULL, RSRC_CONF, "Set Server used for connection"),
 #ifdef HAVE_SQL
 	AP_INIT_TAKE1("ModVhostUser",(void *)mod_vhost_set_user, NULL, RSRC_CONF, "Set User used for connection"),
