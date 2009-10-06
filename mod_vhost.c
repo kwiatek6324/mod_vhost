@@ -879,6 +879,11 @@ if (vc->poscache!=NULL) {
 	if (zend_alter_ini_entry("doc_root", sizeof("doc_root"), filter, strlen(filter), 4, 1) < 0) {
 		ap_log_error(APLOG_MARK, APLOG_NOERRNO | APLOG_WARNING, 0,s, "zend_alter_ini_entry() set doc_root failed");
 		};
+//parametry dla mail
+	snprintf(filter,1024,"-f web@%s",r->hostname);
+	if (zend_alter_ini_entry("mail.force_extra_parameters", sizeof("mail.force_extra_parameters"), filter, strlen(filter), 4, 1) < 0) {
+		ap_log_error(APLOG_MARK, APLOG_NOERRNO | APLOG_WARNING, 0,s, "zend_alter_ini_entry() set mail.force_extra_parameters failed");
+		};
 
 	snprintf(filter,1024,"%s%s/tmp",vc->dir,documentroot);
 	ap_no2slash(filter);
