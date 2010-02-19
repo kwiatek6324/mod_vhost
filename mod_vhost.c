@@ -112,7 +112,7 @@ PGconn  *pgsql_connect(mod_vhost_config   *vc)
 {
 PGconn  *con;
 char    port[32];
-snprintf(port,32,"%d",PGSQL_PORT);
+apr_snprintf(port,32,"%d",PGSQL_PORT);
 
 con=PQsetdbLogin(vc->pgsql_host,vc->pgsql_port,NULL,NULL,vc->pgsql_db,vc->pgsql_user,vc->pgsql_pass);
 
@@ -287,7 +287,7 @@ if ((ret = dbp->open(dbp, NULL,dbfile, NULL, DB_BTREE, DB_CREATE, 0664)) != 0)
 memset(&key, 0, sizeof(key));
 memset(&data, 0, sizeof(data));
 
-snprintf(tmp,1024,"%s:%s",prefix,hostname);
+apr_snprintf(tmp,1024,"%s:%s",prefix,hostname);
 
 key.data = (char *)(tmp);
 key.size = strlen(tmp);
@@ -348,7 +348,7 @@ if ((ret = dbp->open(dbp, NULL,dbfile, NULL, DB_BTREE, DB_CREATE, 0664)) != 0)
 memset(&key, 0, sizeof(key));
 memset(&data, 0, sizeof(data));
 
-snprintf(tmp,1024,"%s:%s",prefix,hostname);
+apr_snprintf(tmp,1024,"%s:%s",prefix,hostname);
 
 key.data = (char *)(tmp);
 key.size = strlen(tmp);
@@ -420,7 +420,7 @@ if (vc->pgsql_host==NULL ||
                 ap_log_error(APLOG_MARK,APLOG_CRIT,0,s,"[mod_vhost.c]: get_pgsql_dr: Cant bind to pgsql server");
         } else {
                 ap_log_error(APLOG_MARK,APLOG_DEBUG,0,s,"[mod_vhost.c]: get_pgsql_dr: Connection established.");
-                snprintf(filter,1024,vc->pgsql_select,r->hostname);
+                apr_snprintf(filter,1024,vc->pgsql_select,r->hostname);
 
                 ap_log_error(APLOG_MARK,APLOG_DEBUG,0,s,"[mod_vhost.c]: get_pgsql_dr: Filter: %s",filter);
                 res=pgsql_tuples(conn,filter);
@@ -436,7 +436,7 @@ if (vc->pgsql_host==NULL ||
                                 val=PQgetvalue(res,0,0);
                                 if (val!=NULL && strlen(val)>0) {
                                         dr=apr_palloc(r->pool,strlen(val+1));
-                                        snprintf(dr,strlen(val)+1,"%s",val);
+                                        apr_snprintf(dr,strlen(val)+1,"%s",val);
                                         ap_log_error(APLOG_MARK,APLOG_DEBUG,0,s,"[mod_vhost.c]: get_pgsql_dr: got %s from pgsql",dr);
                                 } else {
 					dr=NULL;
@@ -510,7 +510,7 @@ if (vc->ldap_host==NULL ||
                 ap_log_error(APLOG_MARK,APLOG_CRIT,0,s,"mod_vhost.c: get_ldap_dr: Cant bind to ldap server");
         } else {
                 ap_log_error(APLOG_MARK,APLOG_NOTICE,0,s,"mod_vhost.c: get_ldap_dr: Connection established.");
-                snprintf(filter,1024,vc->ldap_filter,r->hostname);
+                apr_snprintf(filter,1024,vc->ldap_filter,r->hostname);
 
                 ap_log_error(APLOG_MARK,APLOG_DEBUG,0,s,"mod_vhost.c: get_ldap_dr: Filter: %s",filter);
                 res=ldap_search_s(conn,vc->ldap_basedn,scope,filter,NULL,0,&msg);
@@ -528,7 +528,7 @@ if (vc->ldap_host==NULL ||
                                 val=ldap_get_values(conn,entry,"domaindocumentroot");
                                 if (val!=NULL) {
                                         dr=apr_palloc(r->pool,strlen(val[0])+1);
-                                        snprintf(dr,strlen(val[0])+1,"%s",val[0]);
+                                        apr_snprintf(dr,strlen(val[0])+1,"%s",val[0]);
                                         ap_log_error(APLOG_MARK,APLOG_NOTICE,0,s,"mod_vhost.c: get_ldap_dr: got %s from ldap",dr);
                                 };
 
@@ -598,7 +598,7 @@ if (vc->mysql_host==NULL ||
                 ap_log_error(APLOG_MARK,APLOG_CRIT,0,s,"[mod_vhost.c]: get_mysql_docroot: cant connect to SQL server");
         } else {
                 ap_log_error(APLOG_MARK,APLOG_DEBUG,0,s,"[mod_vhost.c]: get_mysql_docroot: connection established.");
-                snprintf(filter,1024,vc->mysql_select,r->hostname);
+                apr_snprintf(filter,1024,vc->mysql_select,r->hostname);
 
                 ap_log_error(APLOG_MARK,APLOG_DEBUG,0,s,"[mod_vhost.c]: get_mysql_docroot: select: %s",filter);
                 res=mysql_tuples(conn,filter);
@@ -616,7 +616,7 @@ if (vc->mysql_host==NULL ||
                                 	val=row[0];
                                 	if (val!=NULL && strlen(val)>0) {
                                         	dr=apr_palloc(r->pool,strlen(val+1));
-                                        	snprintf(dr,strlen(val)+1,"%s",val);
+                                        	apr_snprintf(dr,strlen(val)+1,"%s",val);
                                         	ap_log_error(APLOG_MARK,APLOG_DEBUG,0,s,"[mod_vhost.c]: get_mysql_docroot: got %s from mysql",dr);
                                 	} else {
                                         	dr=NULL;
@@ -677,7 +677,7 @@ if (vc->sqlite_db==NULL || vc->sqlite_select==NULL) {
                 ap_log_error(APLOG_MARK,APLOG_CRIT,0,s,"[mod_vhost.c]: get_sqlite_docroot: cant connect to SQLte server");
         } else {
                 ap_log_error(APLOG_MARK,APLOG_DEBUG,0,s,"[mod_vhost.c]: get_sqlite_docroot: connection established.");
-                snprintf(filter,1024,vc->sqlite_select,r->hostname);
+                apr_snprintf(filter,1024,vc->sqlite_select,r->hostname);
 
                 ap_log_error(APLOG_MARK,APLOG_DEBUG,0,s,"[mod_vhost.c]: get_sqlite_docroot: select: %s",filter);
                 rc=sqlite_tuples(s,conn,filter,(char ***)&wynik,&cnt);
@@ -692,7 +692,7 @@ if (vc->sqlite_db==NULL || vc->sqlite_select==NULL) {
                                 val=wynik[0];
                                 if (val!=NULL && strlen(val)>0) {
                                         dr=apr_palloc(r->pool,strlen(val+1));
-                                        snprintf(dr,strlen(val)+1,"%s",val);
+                                        apr_snprintf(dr,strlen(val)+1,"%s",val);
                                         ap_log_error(APLOG_MARK,APLOG_DEBUG,0,s,"[mod_vhost.c]: get_sqlite_docroot: got %s from sqlite",dr);
                                 } else {
                                         dr=NULL;
@@ -761,9 +761,9 @@ PGconn                  *conn;
 PGresult                *msg,*entry;
 #endif
 
-static char		*documentroot=NULL;
+char		*documentroot=NULL;
 static char		*dr=NULL;
-char			filter[1024];
+static char		filter[1024];
 
 
 
@@ -864,8 +864,9 @@ if (vc->poscache!=NULL) {
 	ap_log_error(APLOG_MARK,APLOG_DEBUG,0,s,"Filename [%s]",r->filename);
 	ap_log_error(APLOG_MARK,APLOG_DEBUG,0,s,"URI [%s]",r->uri);
 
-	snprintf(filter,1024,"%s%s",vc->dir,documentroot);
+	apr_snprintf(filter,1024,"%s%s",vc->dir,documentroot);
 	ap_no2slash(filter);
+
 	apr_table_setn(r->subprocess_env, "SERVER_ROOT", apr_pstrdup(r->pool,filter));
 	apr_table_set(r->subprocess_env, "DOCUMENT_ROOT", apr_pstrdup(r->pool,filter));
 	apr_table_setn(r->subprocess_env, "PHP_DOCUMENT_ROOT", apr_pstrdup(r->pool,filter));
@@ -880,12 +881,12 @@ if (vc->poscache!=NULL) {
 		ap_log_error(APLOG_MARK, APLOG_NOERRNO | APLOG_WARNING, 0,s, "zend_alter_ini_entry() set doc_root failed");
 		};
 //parametry dla mail
-	snprintf(filter,1024,"-f web@%s",r->hostname);
+	apr_snprintf(filter,1024,"-f web@%s",r->hostname);
 	if (zend_alter_ini_entry("mail.force_extra_parameters", sizeof("mail.force_extra_parameters"), filter, strlen(filter), 4, 1) < 0) {
 		ap_log_error(APLOG_MARK, APLOG_NOERRNO | APLOG_WARNING, 0,s, "zend_alter_ini_entry() set mail.force_extra_parameters failed");
 		};
 
-	snprintf(filter,1024,"%s%s/tmp",vc->dir,documentroot);
+	apr_snprintf(filter,1024,"%s%s/tmp",vc->dir,documentroot);
 	ap_no2slash(filter);
 	if (zend_alter_ini_entry("session.save_path", sizeof("session.save_path"), filter, strlen(filter), 4, 1) < 0) {
 		ap_log_error(APLOG_MARK, APLOG_NOERRNO | APLOG_WARNING, 0,s, "zend_alter_ini_entry() set doc_root failed");
