@@ -763,7 +763,7 @@ PGresult                *msg,*entry;
 
 char		*documentroot=NULL;
 static char		*dr=NULL;
-static char		filter[1024];
+char		filter[1024];
 
 
 
