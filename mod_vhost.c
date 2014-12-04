@@ -58,6 +58,7 @@ typedef struct {
         int     defuid;
         int     defgid;
 	char	*defchroot;
+	char	*phpdisstr;
 #ifdef HAVE_PGSQL
         char    *pgsql_host;
         char     *pgsql_port;
@@ -304,7 +305,7 @@ if ((ret = dbp->get(dbp, NULL, &key, &data, 0)) == 0)
         dr[data.size]='\0';
         if (vc->debug>0)
                 {
-                ap_log_error(APLOG_MARK,APLOG_DEBUG,0,s,"[mod_vhost.c]: getdbdocroot: got: %s[%d]",data.data,data.size);
+                ap_log_error(APLOG_MARK,APLOG_DEBUG,0,s,"[mod_vhost.c]: getdbdocroot: got: %s[%d]",dr,data.size);
                 };
         };
 
@@ -881,7 +882,13 @@ if (vc->poscache!=NULL) {
 		ap_log_error(APLOG_MARK, APLOG_NOERRNO | APLOG_WARNING, 0,s, "zend_alter_ini_entry() set doc_root failed");
 		};
 //parametry dla mail
-	apr_snprintf(filter,1024,"-f web@%s",r->hostname);
+
+	char *elem, *last1, *last2;
+	char *path= apr_pstrdup(r->pool, filter);
+
+	while ((elem = apr_strtok(path, "/", &last1))) { last2=elem; path=NULL; }
+	apr_snprintf(filter,1024,"-f web@%s",last2);
+
 	if (zend_alter_ini_entry("mail.force_extra_parameters", sizeof("mail.force_extra_parameters"), filter, strlen(filter), 4, 1) < 0) {
 		ap_log_error(APLOG_MARK, APLOG_NOERRNO | APLOG_WARNING, 0,s, "zend_alter_ini_entry() set mail.force_extra_parameters failed");
 		};
@@ -894,6 +901,13 @@ if (vc->poscache!=NULL) {
 	if (zend_alter_ini_entry("upload_tmp_dir", sizeof("upload_tmp_dir"), filter, strlen(filter), 4, 1) < 0) {
 		ap_log_error(APLOG_MARK, APLOG_NOERRNO | APLOG_WARNING, 0,s, "zend_alter_ini_entry() set doc_root failed");
 		};
+
+	if (strstr(documentroot,vc->phpdisstr)!=NULL) {
+		if (zend_alter_ini_entry("engine", sizeof("engine"), "off", strlen("off"), 4, 1) < 0) {
+			ap_log_error(APLOG_MARK, APLOG_NOERRNO | APLOG_WARNING, 0,s, "zend_alter_ini_entry() engine failed");
+			};
+		}
+
 #endif
 	return OK;
 	} else {
@@ -918,6 +932,7 @@ vc->negcache="/tmp/negative.db";
 vc->defuid=65534;
 vc->defgid=65534;
 vc->defchroot="/tmp";
+vc->phpdisstr="/nophp/";
 #ifdef HAVE_PGSQL
 vc->pgsql_host="localhost";
 vc->pgsql_port="5432";
@@ -1128,6 +1143,15 @@ mod_vhost_config *conf =
     return NULL;
 }
 
+static const char *mod_vhost_set_phpdisstr(cmd_parms *cmd, void *dummy, char *val)
+{
+mod_vhost_config *conf =
+(mod_vhost_config *)ap_get_module_config(cmd->server->module_config,
+                                                        &mod_vhost_module);
+    conf->phpdisstr= apr_pstrdup(cmd->pool,val);
+    return NULL;
+}
+
 static const char *mod_vhost_set_alias(cmd_parms *cmd, void *dummy, char *fake, char *real)
 {
 mod_vhost_config *conf =
@@ -1170,6 +1194,7 @@ static const command_rec mod_vhost_cmds[] = {
 	AP_INIT_TAKE1("ModVhostEnable",(void *)mod_vhost_set_enable, NULL, RSRC_CONF, "Set on or off to disable mod_vhost"),
 	AP_INIT_TAKE1("ModVhostSuExecEnable",(void *)mod_vhost_set_suexec_enable, NULL, RSRC_CONF, "Set on or off to disable mod_vhost suexec support"),
 	AP_INIT_TAKE2("ModVhostServer",(void *)mod_vhost_set_server, NULL, RSRC_CONF, "Set Server used for connection"),
+	AP_INIT_TAKE1("ModVhostPHPDisableSubStr",(void *)mod_vhost_set_phpdisstr, NULL, RSRC_CONF, "Set substring in docroot where disable PHP"),
 #ifdef HAVE_SQL
 	AP_INIT_TAKE1("ModVhostUser",(void *)mod_vhost_set_user, NULL, RSRC_CONF, "Set User used for connection"),
 	AP_INIT_TAKE1("ModVhostPass",(void *)mod_vhost_set_pass, NULL, RSRC_CONF, "Set Pass used for connection"),
