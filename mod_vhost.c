@@ -255,7 +255,7 @@ return rc;
 
 
 
-static char *get_db_cache(server_rec *s,request_rec *r,char *prefix,char *hostname,char *dbfile)
+static char *get_db_cache(server_rec *s,request_rec *r,char *prefix,char *hostname,char *dbfile,int debug)
 {
 mod_vhost_config   *vc;
 
@@ -271,18 +271,18 @@ vc=ap_get_module_config(r->server->module_config, &mod_vhost_module);
 
 if (hostname==NULL || dbfile==NULL)
         {
-        ap_log_error(APLOG_MARK,APLOG_DEBUG,0,s,"[mod_vhost.c]: no hostname/dbfile received by get_dr");
+        ap_log_error(APLOG_MARK,APLOG_WARNING,0,s,"[mod_vhost.c]: no hostname/dbfile received by get_db_cache");
         return NULL;
         };
 
 if ((ret = db_create(&dbp, NULL, 0)) != 0)
         {
-        ap_log_error(APLOG_MARK,APLOG_DEBUG,0,s,"[mod_vhost.c]: db_create: %s", db_strerror(ret)); return NULL;
+        ap_log_error(APLOG_MARK,APLOG_WARNING,0,s,"[mod_vhost.c]: db_create: %s", db_strerror(ret)); return NULL;
         }
 
 if ((ret = dbp->open(dbp, NULL,dbfile, NULL, DB_BTREE, DB_CREATE, 0664)) != 0)
         {
-        dbp->err(dbp, ret, "DBP Open Error: %s", dbfile);
+        ap_log_error(APLOG_MARK,APLOG_WARNING,0,s,"[mod_vhost.c]: db_open: %s", dbfile); return NULL;
         }
 
 memset(&key, 0, sizeof(key));
@@ -293,20 +293,14 @@ apr_snprintf(tmp,1024,"%s:%s",prefix,hostname);
 key.data = (char *)(tmp);
 key.size = strlen(tmp);
 
-if (vc->debug>0)
-        {
-        ap_log_error(APLOG_MARK,APLOG_DEBUG,0,s,"[mod_vhost.c]: get_db_dr: hostname: %s[%d]",key.data,key.size);
-        };
+if (debug>0) { ap_log_error(APLOG_MARK,APLOG_WARNING,0,s,"[mod_vhost.c]: get_db_cache: [%s] hostname: %s[%d]",dbfile,key.data,key.size); };
 
 if ((ret = dbp->get(dbp, NULL, &key, &data, 0)) == 0)
         {
         dr = apr_palloc(r->pool, data.size + 1);
         strncpy(dr,data.data,data.size);
         dr[data.size]='\0';
-        if (vc->debug>0)
-                {
-                ap_log_error(APLOG_MARK,APLOG_DEBUG,0,s,"[mod_vhost.c]: getdbdocroot: got: %s[%d]",dr,data.size);
-                };
+        if (debug>0) { ap_log_error(APLOG_MARK,APLOG_WARNING,0,s,"[mod_vhost.c]: get_db_cache [%s]: got: %s[%d]",tmp,dr,data.size); };
         };
 
 if ((ret=dbp->close(dbp, 0))!=0)
@@ -319,7 +313,7 @@ return dr;
 }
 
 
-static char *set_db_cache(server_rec *s,request_rec *r,char *prefix,char *hostname,char *value,char *dbfile)
+static char *set_db_cache(server_rec *s,request_rec *r,char *prefix,char *hostname,char *value,char *dbfile,int debug)
 {
 DB                      *dbp;
 DBT                     key, data;
@@ -331,18 +325,18 @@ char			tmp[1024];
 
 if (hostname==NULL || value==NULL || dbfile==NULL)
         {
-        ap_log_error(APLOG_MARK,APLOG_DEBUG,0,s,"[mod_vhost.c]: set_db_cache: no hostname/docroot/dbfile received by set_db_dr ");
+        ap_log_error(APLOG_MARK,APLOG_WARNING,0,s,"[mod_vhost.c]: set_db_cache: no hostname/docroot/dbfile received by set_db_cache ");
         return NULL;
         };
 
 if ((ret = db_create(&dbp, NULL, 0)) != 0)
         {
-        ap_log_error(APLOG_MARK,APLOG_DEBUG,0,s, "db_create: %s", db_strerror(ret)); exit (1);
+        ap_log_error(APLOG_MARK,APLOG_WARNING,0,s, "db_create: %s", db_strerror(ret)); exit (1);
         }
 
 if ((ret = dbp->open(dbp, NULL,dbfile, NULL, DB_BTREE, DB_CREATE, 0664)) != 0)
         {
-        dbp->err(dbp, ret, "DB open Error: %s", dbfile);
+        ap_log_error(APLOG_MARK,APLOG_WARNING,0,s,"[mod_vhost.c]: set_db_cache: db_open: %s", dbfile); return NULL;
         return NULL;
         }
 
@@ -357,16 +351,16 @@ key.size = strlen(tmp);
 data.data=value;
 data.size=strlen(value);
 
-ap_log_error(APLOG_MARK,APLOG_DEBUG,0,s,"[mod_vhost.c]: set_db_dr: %s[%d]",key.data,key.size);
+if (debug>0) { ap_log_error(APLOG_MARK,APLOG_WARNING,0,s,"[mod_vhost.c]: set_db_cache [%s][%d]: [%s][%d]",key.data,key.size,data.data,data.size); }
 
 if ((ret = dbp->put(dbp, NULL, &key, &data, 0)) != 0)
         {
-        ap_log_error(APLOG_MARK,APLOG_DEBUG,0,s,"[mod_vhost.c]: set_db_cache: error setting documentroot");
+        ap_log_error(APLOG_MARK,APLOG_WARNING,0,s,"[mod_vhost.c]: set_db_cache: error setting documentroot");
         };
 
 if ((ret=dbp->close(dbp, 0))!=0)
         {
-        dbp->err(dbp, ret, "DB->put");
+        ap_log_error(APLOG_MARK,APLOG_WARNING,0,s,"[mod_vhost.c]: set_db_cache: error closing db");
         };
 
 return dr;
@@ -375,7 +369,7 @@ return dr;
 
 
 #ifdef HAVE_PGSQL
-static char *get_pgsql_docroot(server_rec *s,request_rec *r,char *hostname)
+static char *get_pgsql_docroot(server_rec *s,request_rec *r,char *hostname,int debug)
 {
 mod_vhost_config   	*vc;
 
@@ -391,17 +385,19 @@ int                     n;
 vc=ap_get_module_config(r->server->module_config, &mod_vhost_module);
 
 if (r->hostname==NULL) {
-        ap_log_error(APLOG_MARK, APLOG_DEBUG, 0,s, "[mod_vhost.c]:  No hostname received by get_pgsql_dr ");
+        ap_log_error(APLOG_MARK, APLOG_WARNING, 0,s, "[mod_vhost.c]:  No hostname received by get_pgsql_dr ");
         return NULL;
         };
 
-ap_log_error(APLOG_MARK, APLOG_DEBUG, 0,s, "[mod_vhost.c]: CONF: host: %s",vc->pgsql_host);
-ap_log_error(APLOG_MARK, APLOG_DEBUG, 0,s, "[mod_vhost.c]: CONF: port: %s",vc->pgsql_port);
-ap_log_error(APLOG_MARK, APLOG_DEBUG, 0,s, "[mod_vhost.c]: CONF: user: %s",vc->pgsql_user);
-ap_log_error(APLOG_MARK, APLOG_DEBUG, 0,s, "[mod_vhost.c]: CONF: pass: %s",vc->pgsql_pass);
-ap_log_error(APLOG_MARK, APLOG_DEBUG, 0,s, "[mod_vhost.c]: CONF: db: %s",vc->pgsql_db);
-ap_log_error(APLOG_MARK, APLOG_DEBUG, 0,s, "[mod_vhost.c]: CONF: select: %s",vc->pgsql_select);
-ap_log_error(APLOG_MARK, APLOG_DEBUG, 0,s, "[mod_vhost.c]: CONF: database: %s",vc->poscache);
+if (debug>0) {
+	ap_log_error(APLOG_MARK, APLOG_WARNING, 0,s, "[mod_vhost.c]: CONF: host: %s",vc->pgsql_host);
+	ap_log_error(APLOG_MARK, APLOG_WARNING, 0,s, "[mod_vhost.c]: CONF: port: %s",vc->pgsql_port);
+	ap_log_error(APLOG_MARK, APLOG_WARNING, 0,s, "[mod_vhost.c]: CONF: user: %s",vc->pgsql_user);
+	ap_log_error(APLOG_MARK, APLOG_WARNING, 0,s, "[mod_vhost.c]: CONF: pass: %s",vc->pgsql_pass);
+	ap_log_error(APLOG_MARK, APLOG_WARNING, 0,s, "[mod_vhost.c]: CONF: db: %s",vc->pgsql_db);
+	ap_log_error(APLOG_MARK, APLOG_WARNING, 0,s, "[mod_vhost.c]: CONF: select: %s",vc->pgsql_select);
+	ap_log_error(APLOG_MARK, APLOG_WARNING, 0,s, "[mod_vhost.c]: CONF: database: %s",vc->poscache);
+	}
 
 
 if (vc->pgsql_host==NULL ||
@@ -420,10 +416,10 @@ if (vc->pgsql_host==NULL ||
                 {
                 ap_log_error(APLOG_MARK,APLOG_CRIT,0,s,"[mod_vhost.c]: get_pgsql_dr: Cant bind to pgsql server");
         } else {
-                ap_log_error(APLOG_MARK,APLOG_DEBUG,0,s,"[mod_vhost.c]: get_pgsql_dr: Connection established.");
+                if (debug>0) { ap_log_error(APLOG_MARK,APLOG_WARNING,0,s,"[mod_vhost.c]: get_pgsql_dr: Connection established."); }
                 apr_snprintf(filter,1024,vc->pgsql_select,r->hostname);
 
-                ap_log_error(APLOG_MARK,APLOG_DEBUG,0,s,"[mod_vhost.c]: get_pgsql_dr: Filter: %s",filter);
+                if (debug>0) { ap_log_error(APLOG_MARK,APLOG_WARNING,0,s,"[mod_vhost.c]: get_pgsql_dr: Filter: %s",filter); }
                 res=pgsql_tuples(conn,filter);
 
                 if (res==NULL) {
@@ -436,9 +432,11 @@ if (vc->pgsql_host==NULL ||
                         } else {
                                 val=PQgetvalue(res,0,0);
                                 if (val!=NULL && strlen(val)>0) {
-                                        dr=apr_palloc(r->pool,strlen(val+1));
-                                        apr_snprintf(dr,strlen(val)+1,"%s",val);
-                                        ap_log_error(APLOG_MARK,APLOG_DEBUG,0,s,"[mod_vhost.c]: get_pgsql_dr: got %s from pgsql",dr);
+                                        dr=apr_palloc(r->pool,strlen(val)+1);
+					strncpy(dr,val,strlen(val));
+					dr[strlen(val)]='\0';
+                                        if (debug>0) { ap_log_error(APLOG_MARK,APLOG_WARNING,0,s,"[mod_vhost.c]: get_pgsql_dr: got %s from pgsql",dr); }
+
                                 } else {
 					dr=NULL;
 				};
@@ -486,13 +484,13 @@ if (r->hostname==NULL) {
         return NULL;
         };
 
-ap_log_error(APLOG_MARK, APLOG_DEBUG, 0,s, "mod_vhost.c: CONF: host: %s",vc->ldap_host);
-ap_log_error(APLOG_MARK, APLOG_DEBUG, 0,s, "mod_vhost.c: CONF: port: %s",vc->ldap_port);
-ap_log_error(APLOG_MARK, APLOG_DEBUG, 0,s, "mod_vhost.c: CONF: binddn: %s",vc->ldap_binddn);
-ap_log_error(APLOG_MARK, APLOG_DEBUG, 0,s, "mod_vhost.c: CONF: bindpw: %s",vc->ldap_bindpw);
-ap_log_error(APLOG_MARK, APLOG_DEBUG, 0,s, "mod_vhost.c: CONF: basedn: %s",vc->ldap_basedn);
-ap_log_error(APLOG_MARK, APLOG_DEBUG, 0,s, "mod_vhost.c: CONF: filter: %s",vc->ldap_filter);
-ap_log_error(APLOG_MARK, APLOG_DEBUG, 0,s, "mod_vhost.c: CONF: database: %s",vc->poscache);
+ap_log_error(APLOG_MARK, APLOG_WARNING, 0,s, "mod_vhost.c: CONF: host: %s",vc->ldap_host);
+ap_log_error(APLOG_MARK, APLOG_WARNING, 0,s, "mod_vhost.c: CONF: port: %s",vc->ldap_port);
+ap_log_error(APLOG_MARK, APLOG_WARNING, 0,s, "mod_vhost.c: CONF: binddn: %s",vc->ldap_binddn);
+ap_log_error(APLOG_MARK, APLOG_WARNING, 0,s, "mod_vhost.c: CONF: bindpw: %s",vc->ldap_bindpw);
+ap_log_error(APLOG_MARK, APLOG_WARNING, 0,s, "mod_vhost.c: CONF: basedn: %s",vc->ldap_basedn);
+ap_log_error(APLOG_MARK, APLOG_WARNING, 0,s, "mod_vhost.c: CONF: filter: %s",vc->ldap_filter);
+ap_log_error(APLOG_MARK, APLOG_WARNING, 0,s, "mod_vhost.c: CONF: database: %s",vc->poscache);
 
 if (vc->ldap_host==NULL ||
         vc->ldap_port==NULL ||
@@ -513,7 +511,7 @@ if (vc->ldap_host==NULL ||
                 ap_log_error(APLOG_MARK,APLOG_NOTICE,0,s,"mod_vhost.c: get_ldap_dr: Connection established.");
                 apr_snprintf(filter,1024,vc->ldap_filter,r->hostname);
 
-                ap_log_error(APLOG_MARK,APLOG_DEBUG,0,s,"mod_vhost.c: get_ldap_dr: Filter: %s",filter);
+                ap_log_error(APLOG_MARK,APLOG_WARNING,0,s,"mod_vhost.c: get_ldap_dr: Filter: %s",filter);
                 res=ldap_search_s(conn,vc->ldap_basedn,scope,filter,NULL,0,&msg);
 
                 if (res!=LDAP_SUCCESS)
@@ -569,17 +567,17 @@ MYSQL_ROW		row;
 vc=ap_get_module_config(r->server->module_config, &mod_vhost_module);
 
 if (r->hostname==NULL) {
-        ap_log_error(APLOG_MARK, APLOG_DEBUG, 0,s, "[mod_vhost.c]:  get_mysql_docroot: No hostname received ");
+        ap_log_error(APLOG_MARK, APLOG_WARNING, 0,s, "[mod_vhost.c]:  get_mysql_docroot: No hostname received ");
         return NULL;
         };
 
-ap_log_error(APLOG_MARK, APLOG_DEBUG, 0,s, "[mod_vhost.c]: CONF: host: %s",vc->mysql_host);
-ap_log_error(APLOG_MARK, APLOG_DEBUG, 0,s, "[mod_vhost.c]: CONF: port: %s",vc->mysql_port);
-ap_log_error(APLOG_MARK, APLOG_DEBUG, 0,s, "[mod_vhost.c]: CONF: user: %s",vc->mysql_user);
-ap_log_error(APLOG_MARK, APLOG_DEBUG, 0,s, "[mod_vhost.c]: CONF: pass: %s",vc->mysql_pass);
-ap_log_error(APLOG_MARK, APLOG_DEBUG, 0,s, "[mod_vhost.c]: CONF: db: %s",vc->mysql_db);
-ap_log_error(APLOG_MARK, APLOG_DEBUG, 0,s, "[mod_vhost.c]: CONF: select: %s",vc->mysql_select);
-ap_log_error(APLOG_MARK, APLOG_DEBUG, 0,s, "[mod_vhost.c]: CONF: database: %s",vc->poscache);
+ap_log_error(APLOG_MARK, APLOG_WARNING, 0,s, "[mod_vhost.c]: CONF: host: %s",vc->mysql_host);
+ap_log_error(APLOG_MARK, APLOG_WARNING, 0,s, "[mod_vhost.c]: CONF: port: %s",vc->mysql_port);
+ap_log_error(APLOG_MARK, APLOG_WARNING, 0,s, "[mod_vhost.c]: CONF: user: %s",vc->mysql_user);
+ap_log_error(APLOG_MARK, APLOG_WARNING, 0,s, "[mod_vhost.c]: CONF: pass: %s",vc->mysql_pass);
+ap_log_error(APLOG_MARK, APLOG_WARNING, 0,s, "[mod_vhost.c]: CONF: db: %s",vc->mysql_db);
+ap_log_error(APLOG_MARK, APLOG_WARNING, 0,s, "[mod_vhost.c]: CONF: select: %s",vc->mysql_select);
+ap_log_error(APLOG_MARK, APLOG_WARNING, 0,s, "[mod_vhost.c]: CONF: database: %s",vc->poscache);
 
 
 if (vc->mysql_host==NULL ||
@@ -598,10 +596,10 @@ if (vc->mysql_host==NULL ||
                 {
                 ap_log_error(APLOG_MARK,APLOG_CRIT,0,s,"[mod_vhost.c]: get_mysql_docroot: cant connect to SQL server");
         } else {
-                ap_log_error(APLOG_MARK,APLOG_DEBUG,0,s,"[mod_vhost.c]: get_mysql_docroot: connection established.");
+                ap_log_error(APLOG_MARK,APLOG_WARNING,0,s,"[mod_vhost.c]: get_mysql_docroot: connection established.");
                 apr_snprintf(filter,1024,vc->mysql_select,r->hostname);
 
-                ap_log_error(APLOG_MARK,APLOG_DEBUG,0,s,"[mod_vhost.c]: get_mysql_docroot: select: %s",filter);
+                ap_log_error(APLOG_MARK,APLOG_WARNING,0,s,"[mod_vhost.c]: get_mysql_docroot: select: %s",filter);
                 res=mysql_tuples(conn,filter);
 
                 if (res==NULL) {
@@ -618,7 +616,7 @@ if (vc->mysql_host==NULL ||
                                 	if (val!=NULL && strlen(val)>0) {
                                         	dr=apr_palloc(r->pool,strlen(val+1));
                                         	apr_snprintf(dr,strlen(val)+1,"%s",val);
-                                        	ap_log_error(APLOG_MARK,APLOG_DEBUG,0,s,"[mod_vhost.c]: get_mysql_docroot: got %s from mysql",dr);
+                                        	ap_log_error(APLOG_MARK,APLOG_WARNING,0,s,"[mod_vhost.c]: get_mysql_docroot: got %s from mysql",dr);
                                 	} else {
                                         	dr=NULL;
                                 	};
@@ -659,12 +657,12 @@ int			rc;
 vc=ap_get_module_config(r->server->module_config, &mod_vhost_module);
 
 if (r->hostname==NULL) {
-        ap_log_error(APLOG_MARK, APLOG_DEBUG, 0,s, "[mod_vhost.c]:  get_sqlite_docroot: No hostname received ");
+        ap_log_error(APLOG_MARK, APLOG_WARNING, 0,s, "[mod_vhost.c]:  get_sqlite_docroot: No hostname received ");
         return NULL;
         };
 
-ap_log_error(APLOG_MARK, APLOG_DEBUG, 0,s, "[mod_vhost.c]: CONF: db: %s",vc->sqlite_db);
-ap_log_error(APLOG_MARK, APLOG_DEBUG, 0,s, "[mod_vhost.c]: CONF: select: %s",vc->sqlite_select);
+ap_log_error(APLOG_MARK, APLOG_WARNING, 0,s, "[mod_vhost.c]: CONF: db: %s",vc->sqlite_db);
+ap_log_error(APLOG_MARK, APLOG_WARNING, 0,s, "[mod_vhost.c]: CONF: select: %s",vc->sqlite_select);
 
 
 if (vc->sqlite_db==NULL || vc->sqlite_select==NULL) {
@@ -677,10 +675,10 @@ if (vc->sqlite_db==NULL || vc->sqlite_select==NULL) {
                 {
                 ap_log_error(APLOG_MARK,APLOG_CRIT,0,s,"[mod_vhost.c]: get_sqlite_docroot: cant connect to SQLte server");
         } else {
-                ap_log_error(APLOG_MARK,APLOG_DEBUG,0,s,"[mod_vhost.c]: get_sqlite_docroot: connection established.");
+                ap_log_error(APLOG_MARK,APLOG_WARNING,0,s,"[mod_vhost.c]: get_sqlite_docroot: connection established.");
                 apr_snprintf(filter,1024,vc->sqlite_select,r->hostname);
 
-                ap_log_error(APLOG_MARK,APLOG_DEBUG,0,s,"[mod_vhost.c]: get_sqlite_docroot: select: %s",filter);
+                ap_log_error(APLOG_MARK,APLOG_WARNING,0,s,"[mod_vhost.c]: get_sqlite_docroot: select: %s",filter);
                 rc=sqlite_tuples(s,conn,filter,(char ***)&wynik,&cnt);
 
 
@@ -694,7 +692,7 @@ if (vc->sqlite_db==NULL || vc->sqlite_select==NULL) {
                                 if (val!=NULL && strlen(val)>0) {
                                         dr=apr_palloc(r->pool,strlen(val+1));
                                         apr_snprintf(dr,strlen(val)+1,"%s",val);
-                                        ap_log_error(APLOG_MARK,APLOG_DEBUG,0,s,"[mod_vhost.c]: get_sqlite_docroot: got %s from sqlite",dr);
+                                        ap_log_error(APLOG_MARK,APLOG_WARNING,0,s,"[mod_vhost.c]: get_sqlite_docroot: got %s from sqlite",dr);
                                 } else {
                                         dr=NULL;
                                 };
@@ -762,10 +760,14 @@ PGconn                  *conn;
 PGresult                *msg,*entry;
 #endif
 
-char		*documentroot=NULL;
-static char		*dr=NULL;
+const char *documentroot;
+const char *uri;
+char		*dr=NULL;
 char		filter[1024];
+int		debug=0;
 
+
+uri=r->uri;
 
 
 if (vc->enable==0) {
@@ -775,17 +777,22 @@ if (vc->enable==0) {
 
 s=r->server;
 
+conn_rec *c = r->connection;
+
+if (vc->debug && strcmp(r->useragent_ip ,vc->debug)==0) { debug=1; }
+
+
 if ((char *)r->hostname==NULL || strlen(r->hostname)==0 )
 	{
-	ap_log_error(APLOG_MARK, APLOG_ERR, 0,s, "[mod_vhost.c]: No Hostname recived by trans_uri");
+	if (debug>0) {	ap_log_error(APLOG_MARK, APLOG_ERR, 0,s, "[mod_vhost.c]: No Hostname recived by trans_uri");}
 	return DECLINED;
 	};
 
-ap_log_error(APLOG_MARK, APLOG_DEBUG,0,s,"Received: [%s]",r->hostname);
+if (debug>0) { ap_log_error(APLOG_MARK, APLOG_WARNING,0,s,"Received: [%s]",r->hostname); }
 
 if ((documentroot=check_alias(r,vc->aliases))!=NULL) {
 
-	ap_log_error(APLOG_MARK,APLOG_DEBUG,0,s,"[mod_vhost.c]: Got Alias [%s]->[%s]",r->uri,documentroot);
+	if (debug>0) { ap_log_error(APLOG_MARK,APLOG_WARNING,0,s,"[mod_vhost.c]: Got Alias [%s]->[%s]",r->uri,documentroot); }
 
 //        r->server->server_admin= apr_pstrcat(r->pool,"webmaster@",r->hostname,NULL);
 //        r->server->server_hostname= apr_pstrcat(r->pool,r->hostname,NULL);
@@ -802,47 +809,45 @@ if ((documentroot=check_alias(r,vc->aliases))!=NULL) {
 
 
 if (vc->negcache!=NULL) {
-	documentroot=get_db_cache(r->server,r,(char *)"all",(char *)r->hostname,vc->negcache);
+	documentroot=get_db_cache(r->server,r,(char *)"docroot",(char *)r->hostname,vc->negcache,debug);
 	if (documentroot!=NULL && !strcmp(documentroot,"NOT_FOUND")) {
-		ap_log_error(APLOG_MARK,APLOG_DEBUG,0,s,"mod_vhost: hostname [%s] found in negative Cache",(char *)r->hostname);
+		ap_log_error(APLOG_MARK,APLOG_WARNING,0,s,"mod_vhost: hostname [%s] found in negative Cache",(char *)r->hostname);
 		return DECLINED;
 		};
 	} ;
 
+
 if (vc->poscache!=NULL) {
-	documentroot=get_db_cache(r->server,r,(char *)"docroot",(char *)r->hostname,vc->poscache);
+	documentroot=get_db_cache(r->server,r,(char *)"docroot",(char *)r->hostname,vc->poscache,debug);
 	if (documentroot==NULL) {
 		#ifdef HAVE_PGSQL
-		dr=get_pgsql_docroot(r->server,r,(char *)r->hostname);
+		documentroot=get_pgsql_docroot(r->server,r,(char *)r->hostname,debug);
 		#endif
 		#ifdef HAVE_LDAP
-		dr=get_ldap_docroot(r->server,r,(char *)r->hostname);
+		documentroot=get_ldap_docroot(r->server,r,(char *)r->hostname,debug);
 		#endif
 		#ifdef HAVE_MYSQL
-		dr=get_mysql_docroot(r->server,r,(char *)r->hostname);
+		documentroot=get_mysql_docroot(r->server,r,(char *)r->hostname,debug);
 		#endif
 		#ifdef HAVE_SQLITE
-		dr=get_sqlite_docroot(r->server,r,(char *)r->hostname);
+		documentroot=get_sqlite_docroot(r->server,r,(char *)r->hostname,debug);
 		#endif
-		if (dr==NULL) {
+		if (documentroot==NULL) {
 			ap_log_error(APLOG_MARK,APLOG_WARNING,0,s,"[mod_vhost.c]: hostname not found in database [%s]",(char *)r->hostname);
-			documentroot=NULL;
 			} else {
-			set_db_cache(r->server,r,"docroot",(char *)r->hostname,dr,vc->poscache);
-			documentroot=apr_pstrdup(r->pool,dr);
+			set_db_cache(r->server,r,"docroot",(char *)r->hostname,(char *)documentroot,vc->poscache,debug);
+			if (debug>0) {  ap_log_error(APLOG_MARK,APLOG_WARNING,0,s,"[mod_vhost.c]: received from database[%s]->[%s]",(char *)r->hostname,documentroot); }
 			};
 		};
 
 	if (documentroot==NULL) {
-		set_db_cache(r->server,r,"docroot",(char *)r->hostname,"NOT_FOUND",vc->negcache);
+		set_db_cache(r->server,r,"docroot",(char *)r->hostname,"NOT_FOUND",vc->negcache,debug);
 		return DECLINED;
 		};
 
-	if (vc->debug>0) {
-		ap_log_error(APLOG_MARK,APLOG_DEBUG,0,s,"[mod_vhost.c] documentroot: [%s][%d]",documentroot,strlen(documentroot));
-		};
+	if (debug>0) { ap_log_error(APLOG_MARK,APLOG_WARNING,0,s,"[mod_vhost.c] documentroot: [%s][%d]",documentroot,strlen(documentroot)); };
 
-	documentroot[strlen(documentroot)]='\0';
+	//documentroot[strlen(documentroot)]='\0';
 
 /*
 	r->server->server_admin= apr_pstrcat(r->pool,"webmaster@",r->hostname,NULL);
@@ -858,12 +863,15 @@ if (vc->poscache!=NULL) {
 //	r->parsed_uri.hostinfo = r->server->server_hostname;
 //	r->parsed_uri.hostname = r->server->server_hostname;
 
-	r->filename=apr_pstrcat(r->pool,vc->dir,documentroot,r->uri,NULL);
+
+	r->filename=apr_pstrcat(r->pool,vc->dir,documentroot,uri,NULL);
 	ap_no2slash(r->filename);
 
-	ap_log_error(APLOG_MARK,APLOG_DEBUG,0,s,"Server Name [%s]",r->server->server_hostname);
-	ap_log_error(APLOG_MARK,APLOG_DEBUG,0,s,"Filename [%s]",r->filename);
-	ap_log_error(APLOG_MARK,APLOG_DEBUG,0,s,"URI [%s]",r->uri);
+	if (debug>0) {
+		ap_log_error(APLOG_MARK,APLOG_WARNING,0,s,"Server Name [%s]",r->server->server_hostname);
+		ap_log_error(APLOG_MARK,APLOG_WARNING,0,s,"Filename [%s]",r->filename);
+		ap_log_error(APLOG_MARK,APLOG_WARNING,0,s,"URI [%s]",r->uri);
+	}
 
 	apr_snprintf(filter,1024,"%s%s",vc->dir,documentroot);
 	ap_no2slash(filter);
@@ -962,7 +970,7 @@ vc->sqlite_db="/tmp/baza.db";
 vc->sqlite_select="select documentroot,uid,gid from www where domainname=%s";
 #endif
 
-vc->debug="0";
+vc->debug=NULL;
 
 vc->aliases = apr_array_make(p, 20, sizeof(vhostalias_entry));
 
