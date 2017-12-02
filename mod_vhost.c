@@ -369,7 +369,7 @@ return dr;
 
 
 #ifdef HAVE_PGSQL
-static char *get_pgsql_docroot(server_rec *s,request_rec *r,char *hostname,int debug)
+static char *get_pgsql_webinfo(server_rec *s,request_rec *r,char *hostname,int debug)
 {
 mod_vhost_config   	*vc;
 
@@ -460,7 +460,7 @@ return dr;
 
 #ifdef HAVE_LDAP
 
-static char *get_ldap_docroot(server_rec *s,request_rec *r,char *hostname)
+static char *get_ldap_webinfo(server_rec *s,request_rec *r,char *hostname)
 {
 mod_vhost_config       *vc;
 
@@ -549,7 +549,7 @@ return dr;
 
 #ifdef HAVE_MYSQL 
 
-static char *get_mysql_docroot(server_rec *s,request_rec *r,char *hostname)
+static char *get_mysql_webinfo(server_rec *s,request_rec *r,char *hostname)
 {
 mod_vhost_config        *vc;
 
@@ -567,7 +567,7 @@ MYSQL_ROW		row;
 vc=ap_get_module_config(r->server->module_config, &mod_vhost_module);
 
 if (r->hostname==NULL) {
-        ap_log_error(APLOG_MARK, APLOG_WARNING, 0,s, "[mod_vhost.c]:  get_mysql_docroot: No hostname received ");
+        ap_log_error(APLOG_MARK, APLOG_WARNING, 0,s, "[mod_vhost.c]:  get_mysql_webinfo: No hostname received ");
         return NULL;
         };
 
@@ -587,28 +587,28 @@ if (vc->mysql_host==NULL ||
         vc->mysql_db==NULL ||
         vc->mysql_select==NULL )
         {
-        ap_log_error(APLOG_MARK,APLOG_CRIT,0,s,"[mod_vhost.c]: get_mysql_docroot: Dont have all needed Mysql Settings");
+        ap_log_error(APLOG_MARK,APLOG_CRIT,0,s,"[mod_vhost.c]: get_mysql_webinfo: Dont have all needed Mysql Settings");
 } else {
 
         conn=mysql_connct(vc);
 
         if (conn==NULL)
                 {
-                ap_log_error(APLOG_MARK,APLOG_CRIT,0,s,"[mod_vhost.c]: get_mysql_docroot: cant connect to SQL server");
+                ap_log_error(APLOG_MARK,APLOG_CRIT,0,s,"[mod_vhost.c]: get_mysql_webinfo: cant connect to SQL server");
         } else {
-                ap_log_error(APLOG_MARK,APLOG_WARNING,0,s,"[mod_vhost.c]: get_mysql_docroot: connection established.");
+                ap_log_error(APLOG_MARK,APLOG_WARNING,0,s,"[mod_vhost.c]: get_mysql_webinfo: connection established.");
                 apr_snprintf(filter,1024,vc->mysql_select,r->hostname);
 
-                ap_log_error(APLOG_MARK,APLOG_WARNING,0,s,"[mod_vhost.c]: get_mysql_docroot: select: %s",filter);
+                ap_log_error(APLOG_MARK,APLOG_WARNING,0,s,"[mod_vhost.c]: get_mysql_webinfo: select: %s",filter);
                 res=mysql_tuples(conn,filter);
 
                 if (res==NULL) {
-                        ap_log_error(APLOG_MARK,APLOG_CRIT,0,s,"[mod_vhost.c]: get_mysql_docroot: search error");
+                        ap_log_error(APLOG_MARK,APLOG_CRIT,0,s,"[mod_vhost.c]: get_mysql_webinfo: search error");
                 } else {
                         n=mysql_num_fields(res);
 
                         if (n!=1) {
-                                ap_log_error(APLOG_MARK,APLOG_ERR,0,s,"[mod_vhost.c]: get_mysql_docroot no single entry for query: %s",filter);
+                                ap_log_error(APLOG_MARK,APLOG_ERR,0,s,"[mod_vhost.c]: get_mysql_webinfo no single entry for query: %s",filter);
                         } else {
 				row=mysql_fetch_row(res);
 				if (row!=NULL) {
@@ -616,7 +616,7 @@ if (vc->mysql_host==NULL ||
                                 	if (val!=NULL && strlen(val)>0) {
                                         	dr=apr_palloc(r->pool,strlen(val+1));
                                         	apr_snprintf(dr,strlen(val)+1,"%s",val);
-                                        	ap_log_error(APLOG_MARK,APLOG_WARNING,0,s,"[mod_vhost.c]: get_mysql_docroot: got %s from mysql",dr);
+                                        	ap_log_error(APLOG_MARK,APLOG_WARNING,0,s,"[mod_vhost.c]: get_mysql_webinfo: got %s from mysql",dr);
                                 	} else {
                                         	dr=NULL;
                                 	};
@@ -638,7 +638,7 @@ return dr;
 
 
 #ifdef HAVE_SQLITE
-static char *get_sqlite_docroot(server_rec *s,request_rec *r,char *hostname)
+static char *get_sqlite_webinfo(server_rec *s,request_rec *r,char *hostname)
 {
 mod_vhost_config        *vc;
 
@@ -657,7 +657,7 @@ int			rc;
 vc=ap_get_module_config(r->server->module_config, &mod_vhost_module);
 
 if (r->hostname==NULL) {
-        ap_log_error(APLOG_MARK, APLOG_WARNING, 0,s, "[mod_vhost.c]:  get_sqlite_docroot: No hostname received ");
+        ap_log_error(APLOG_MARK, APLOG_WARNING, 0,s, "[mod_vhost.c]:  get_sqlite_webinfo: No hostname received ");
         return NULL;
         };
 
@@ -666,33 +666,33 @@ ap_log_error(APLOG_MARK, APLOG_WARNING, 0,s, "[mod_vhost.c]: CONF: select: %s",v
 
 
 if (vc->sqlite_db==NULL || vc->sqlite_select==NULL) {
-        ap_log_error(APLOG_MARK,APLOG_CRIT,0,s,"[mod_vhost.c]: get_sqlite_docroot: Dont have all needed Sqlite Settings");
+        ap_log_error(APLOG_MARK,APLOG_CRIT,0,s,"[mod_vhost.c]: get_sqlite_webinfo: Dont have all needed Sqlite Settings");
 } else {
 
         conn=sqlite_connect(vc);
 
         if (conn==NULL)
                 {
-                ap_log_error(APLOG_MARK,APLOG_CRIT,0,s,"[mod_vhost.c]: get_sqlite_docroot: cant connect to SQLte server");
+                ap_log_error(APLOG_MARK,APLOG_CRIT,0,s,"[mod_vhost.c]: get_sqlite_webinfo: cant connect to SQLte server");
         } else {
-                ap_log_error(APLOG_MARK,APLOG_WARNING,0,s,"[mod_vhost.c]: get_sqlite_docroot: connection established.");
+                ap_log_error(APLOG_MARK,APLOG_WARNING,0,s,"[mod_vhost.c]: get_sqlite_webinfo: connection established.");
                 apr_snprintf(filter,1024,vc->sqlite_select,r->hostname);
 
-                ap_log_error(APLOG_MARK,APLOG_WARNING,0,s,"[mod_vhost.c]: get_sqlite_docroot: select: %s",filter);
+                ap_log_error(APLOG_MARK,APLOG_WARNING,0,s,"[mod_vhost.c]: get_sqlite_webinfo: select: %s",filter);
                 rc=sqlite_tuples(s,conn,filter,(char ***)&wynik,&cnt);
 
 
                 if (rc<0) {
-                        ap_log_error(APLOG_MARK,APLOG_CRIT,0,s,"[mod_vhost.c]: get_sqlite_docroot: search error");
+                        ap_log_error(APLOG_MARK,APLOG_CRIT,0,s,"[mod_vhost.c]: get_sqlite_webinfo: search error");
                 } else {
                         if (cnt!=1) {
-                                ap_log_error(APLOG_MARK,APLOG_ERR,0,s,"[mod_vhost.c]: get_sqlite_docroot no single entry for query: [%s], got %d",filter,cnt);
+                                ap_log_error(APLOG_MARK,APLOG_ERR,0,s,"[mod_vhost.c]: get_sqlite_webinfo no single entry for query: [%s], got %d",filter,cnt);
                         } else {
                                 val=wynik[0];
                                 if (val!=NULL && strlen(val)>0) {
                                         dr=apr_palloc(r->pool,strlen(val+1));
                                         apr_snprintf(dr,strlen(val)+1,"%s",val);
-                                        ap_log_error(APLOG_MARK,APLOG_WARNING,0,s,"[mod_vhost.c]: get_sqlite_docroot: got %s from sqlite",dr);
+                                        ap_log_error(APLOG_MARK,APLOG_WARNING,0,s,"[mod_vhost.c]: get_sqlite_webinfo: got %s from sqlite",dr);
                                 } else {
                                         dr=NULL;
                                 };
@@ -760,8 +760,10 @@ PGconn                  *conn;
 PGresult                *msg,*entry;
 #endif
 
-const char *documentroot;
-const char *uri;
+char *info;
+char *documentroot;
+char *php_version;
+char *uri;
 char		*dr=NULL;
 char		filter[1024];
 int		debug=0;
@@ -790,18 +792,11 @@ if ((char *)r->hostname==NULL || strlen(r->hostname)==0 )
 
 if (debug>0) { ap_log_error(APLOG_MARK, APLOG_WARNING,0,s,"Received: [%s]",r->hostname); }
 
-if ((documentroot=check_alias(r,vc->aliases))!=NULL) {
+if ((info=check_alias(r,vc->aliases))!=NULL) {
 
-	if (debug>0) { ap_log_error(APLOG_MARK,APLOG_WARNING,0,s,"[mod_vhost.c]: Got Alias [%s]->[%s]",r->uri,documentroot); }
+	if (debug>0) { ap_log_error(APLOG_MARK,APLOG_WARNING,0,s,"[mod_vhost.c]: Got Alias [%s]->[%s]",r->uri,info); }
 
-//        r->server->server_admin= apr_pstrcat(r->pool,"webmaster@",r->hostname,NULL);
-//        r->server->server_hostname= apr_pstrcat(r->pool,r->hostname,NULL);
-
-//        r->parsed_uri.path=apr_pstrcat(r->pool,documentroot,r->parsed_uri.path,NULL);
-//        r->parsed_uri.hostname=r->server->server_hostname;
-//        r->parsed_uri.hostinfo=r->server->server_hostname;
-
-        r->filename=apr_pstrcat(r->pool,vc->dir,documentroot,NULL);
+        r->filename=apr_pstrcat(r->pool,vc->dir,info,NULL);
 
 	return OK;
 
@@ -809,8 +804,8 @@ if ((documentroot=check_alias(r,vc->aliases))!=NULL) {
 
 
 if (vc->negcache!=NULL) {
-	documentroot=get_db_cache(r->server,r,(char *)"docroot",(char *)r->hostname,vc->negcache,debug);
-	if (documentroot!=NULL && !strcmp(documentroot,"NOT_FOUND")) {
+	info=get_db_cache(r->server,r,(char *)"info",(char *)r->hostname,vc->negcache,debug);
+	if (info!=NULL && !strcmp(info,"NOT_FOUND")) {
 		ap_log_error(APLOG_MARK,APLOG_WARNING,0,s,"mod_vhost: hostname [%s] found in negative Cache",(char *)r->hostname);
 		return DECLINED;
 		};
@@ -818,106 +813,71 @@ if (vc->negcache!=NULL) {
 
 
 if (vc->poscache!=NULL) {
-	documentroot=get_db_cache(r->server,r,(char *)"docroot",(char *)r->hostname,vc->poscache,debug);
-	if (documentroot==NULL) {
+	info=get_db_cache(r->server,r,(char *)"info",(char *)r->hostname,vc->poscache,debug);
+	if (info==NULL) {
 		#ifdef HAVE_PGSQL
-		documentroot=get_pgsql_docroot(r->server,r,(char *)r->hostname,debug);
+		info=get_pgsql_webinfo(r->server,r,(char *)r->hostname,debug);
 		#endif
 		#ifdef HAVE_LDAP
-		documentroot=get_ldap_docroot(r->server,r,(char *)r->hostname,debug);
+		info=get_ldap_webinfo(r->server,r,(char *)r->hostname,debug);
 		#endif
 		#ifdef HAVE_MYSQL
-		documentroot=get_mysql_docroot(r->server,r,(char *)r->hostname,debug);
+		info=get_mysql_webinfo(r->server,r,(char *)r->hostname,debug);
 		#endif
 		#ifdef HAVE_SQLITE
-		documentroot=get_sqlite_docroot(r->server,r,(char *)r->hostname,debug);
+		info=get_sqlite_webinfo(r->server,r,(char *)r->hostname,debug);
 		#endif
-		if (documentroot==NULL) {
+		if (info==NULL) {
 			ap_log_error(APLOG_MARK,APLOG_WARNING,0,s,"[mod_vhost.c]: hostname not found in database [%s]",(char *)r->hostname);
 			} else {
-			set_db_cache(r->server,r,"docroot",(char *)r->hostname,(char *)documentroot,vc->poscache,debug);
-			if (debug>0) {  ap_log_error(APLOG_MARK,APLOG_WARNING,0,s,"[mod_vhost.c]: received from database[%s]->[%s]",(char *)r->hostname,documentroot); }
+			set_db_cache(r->server,r,"info",(char *)r->hostname,(char *)info,vc->poscache,debug);
+			if (debug>0) {  ap_log_error(APLOG_MARK,APLOG_WARNING,0,s,"[mod_vhost.c]: received from database[%s]->[%s]",(char *)r->hostname,info); }
 			};
 		};
 
-	if (documentroot==NULL) {
-		set_db_cache(r->server,r,"docroot",(char *)r->hostname,"NOT_FOUND",vc->negcache,debug);
+	if (info==NULL) {
+		set_db_cache(r->server,r,"info",(char *)r->hostname,"NOT_FOUND",vc->negcache,debug);
 		return DECLINED;
 		};
 
-	if (debug>0) { ap_log_error(APLOG_MARK,APLOG_WARNING,0,s,"[mod_vhost.c] documentroot: [%s][%d]",documentroot,strlen(documentroot)); };
+	if (debug>0) { ap_log_error(APLOG_MARK,APLOG_WARNING,0,s,"[mod_vhost.c] info: [%s][%d]",info,strlen(info)); };
 
-	//documentroot[strlen(documentroot)]='\0';
+	//info[strlen(info)]='\0';
 
-/*
-	r->server->server_admin= apr_pstrcat(r->pool,"webmaster@",r->hostname,NULL);
-	r->server->server_hostname= apr_pstrcat(r->pool,r->hostname,NULL);
+	char *strtok_state;
+	char *key;
+	int  c=0;
 
-	r->parsed_uri.path=apr_pstrcat(r->pool,documentroot,r->parsed_uri.path,NULL);
-	r->parsed_uri.hostname=r->server->server_hostname;
-	r->parsed_uri.hostinfo=r->server->server_hostname;
-*/
+	key = apr_strtok(info, ":", &strtok_state);
+	while (key) {
+
+		if (c==0) { documentroot=apr_pstrdup(r->pool,key); }
+		if (c==1) { php_version=apr_pstrdup(r->pool,key); }
+
+		key = apr_strtok(NULL, ":", &strtok_state);
+		c++;
+		}
 
 	r->server->server_hostname = apr_pstrdup(r->pool, r->hostname); // prepare server hostname
-//	r->server->is_virtual = 1;
-//	r->parsed_uri.hostinfo = r->server->server_hostname;
-//	r->parsed_uri.hostname = r->server->server_hostname;
 
-
-	r->filename=apr_pstrcat(r->pool,vc->dir,documentroot,uri,NULL);
+	r->filename=apr_pstrcat(r->pool,vc->dir,info,uri,NULL);
 	ap_no2slash(r->filename);
 
 	if (debug>0) {
+		ap_log_error(APLOG_MARK,APLOG_WARNING,0,s,"Document Root[%s]",documentroot);
+		ap_log_error(APLOG_MARK,APLOG_WARNING,0,s,"PHP Version [%s]",php_version);
 		ap_log_error(APLOG_MARK,APLOG_WARNING,0,s,"Server Name [%s]",r->server->server_hostname);
 		ap_log_error(APLOG_MARK,APLOG_WARNING,0,s,"Filename [%s]",r->filename);
 		ap_log_error(APLOG_MARK,APLOG_WARNING,0,s,"URI [%s]",r->uri);
 	}
 
-	apr_snprintf(filter,1024,"%s%s",vc->dir,documentroot);
-	ap_no2slash(filter);
 
-	apr_table_setn(r->subprocess_env, "SERVER_ROOT", apr_pstrdup(r->pool,filter));
-	apr_table_set(r->subprocess_env, "DOCUMENT_ROOT", apr_pstrdup(r->pool,filter));
-	apr_table_setn(r->subprocess_env, "PHP_DOCUMENT_ROOT", apr_pstrdup(r->pool,filter));
-	//scfg->ap_document_root = apr_pstrdup(r->pool,filter);
+	ap_set_context_info(r, NULL, documentroot);
+	ap_set_document_root(r, documentroot);
 
+	apr_table_setn(r->subprocess_env, "PHP_VERSION", apr_pstrdup(r->pool,php_version));
 
-#ifdef HAVE_PHP
-	if (zend_alter_ini_entry("open_basedir", sizeof("open_basedir"), filter, strlen(filter), 4, 1) < 0) {
-		ap_log_error(APLOG_MARK, APLOG_NOERRNO | APLOG_WARNING, 0,s,"zend_alter_ini_entry() set open_basedir failed");
-		};
-	if (zend_alter_ini_entry("doc_root", sizeof("doc_root"), filter, strlen(filter), 4, 1) < 0) {
-		ap_log_error(APLOG_MARK, APLOG_NOERRNO | APLOG_WARNING, 0,s, "zend_alter_ini_entry() set doc_root failed");
-		};
-//parametry dla mail
-
-	char *elem, *last1, *last2;
-	char *path= apr_pstrdup(r->pool, filter);
-
-	while ((elem = apr_strtok(path, "/", &last1))) { last2=elem; path=NULL; }
-	apr_snprintf(filter,1024,"-f web@%s",last2);
-
-	if (zend_alter_ini_entry("mail.force_extra_parameters", sizeof("mail.force_extra_parameters"), filter, strlen(filter), 4, 1) < 0) {
-		ap_log_error(APLOG_MARK, APLOG_NOERRNO | APLOG_WARNING, 0,s, "zend_alter_ini_entry() set mail.force_extra_parameters failed");
-		};
-
-	apr_snprintf(filter,1024,"%s%s/tmp",vc->dir,documentroot);
-	ap_no2slash(filter);
-	if (zend_alter_ini_entry("session.save_path", sizeof("session.save_path"), filter, strlen(filter), 4, 1) < 0) {
-		ap_log_error(APLOG_MARK, APLOG_NOERRNO | APLOG_WARNING, 0,s, "zend_alter_ini_entry() set doc_root failed");
-		};
-	if (zend_alter_ini_entry("upload_tmp_dir", sizeof("upload_tmp_dir"), filter, strlen(filter), 4, 1) < 0) {
-		ap_log_error(APLOG_MARK, APLOG_NOERRNO | APLOG_WARNING, 0,s, "zend_alter_ini_entry() set doc_root failed");
-		};
-
-	if (strstr(documentroot,vc->phpdisstr)!=NULL) {
-		if (zend_alter_ini_entry("engine", sizeof("engine"), "off", strlen("off"), 4, 1) < 0) {
-			ap_log_error(APLOG_MARK, APLOG_NOERRNO | APLOG_WARNING, 0,s, "zend_alter_ini_entry() engine failed");
-			};
-		}
-
-#endif
-	return OK;
+	return DECLINED;
 	} else {
 	return DECLINED;
 	};
@@ -1194,7 +1154,7 @@ mod_vhost_config *conf =
 
 static void mod_vhost_register_hooks(apr_pool_t *p) {
 //	static const char * const vhSucc[]={ "mod_alias.c", NULL };
-        ap_hook_translate_name(mod_vhost_trans_uri, NULL, NULL, APR_HOOK_MIDDLE);
+        ap_hook_translate_name(mod_vhost_trans_uri, NULL, NULL, APR_HOOK_FIRST);
 };
 
 
